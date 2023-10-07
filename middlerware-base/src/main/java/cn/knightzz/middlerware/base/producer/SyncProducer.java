@@ -37,16 +37,14 @@ public class SyncProducer {
         String tag = "order";
         for (int i = 0; i < 100; i++) {
             // 每条消息都会有对应的id
-            String key = IdUtil.fastUUID();
-            String body = "INF : ==> log : " + RandomUtil.randomString(6);
+            String key = "key-" + i;
+            String body = "INF : ==> log : 当前消息 " + i;
             Message message = new Message(topic, tag, key, body.getBytes());
             producer.send(message);
             log.info("发送消息 => key : {} , message : {}", key, body);
         }
         // 关闭生产者
         producer.shutdown();
-
-
     }
 
 }

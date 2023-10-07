@@ -34,13 +34,14 @@ public class PullConsumer {
         String tag = "order";
         messageQueue.setTopic(topic);
         // 从队列 id= 0 的队列 获取数据
+        // 100条消息, 分为 4 个队列, 每个队列 25 条消息
         messageQueue.setQueueId(0);
         // 这里的 broker-a 是从 web ui 界面获取的
         messageQueue.setBrokerName("broker-a");
 
         long startOffset = 0;
+        // 每一个 offset 都是一条数据
         PullResult pullResult = consumer.pull(messageQueue, tag, startOffset, 25);
-
         if (pullResult.getPullStatus().equals(PullStatus.FOUND)) {
             List<MessageExt> msgFoundList = pullResult.getMsgFoundList();
             msgFoundList.forEach(messageExt -> {
@@ -57,5 +58,44 @@ public class PullConsumer {
             consumer.updateConsumeOffset(messageQueue, pullResult.getNextBeginOffset());
         }
         consumer.shutdown();
+    }
+
+    public static void handlerMessage(String group, String topic, String tag, int queueNum, int offset) {
+        // 创建消费者组对象
+        DefaultMQPullConsumer consumer = new DefaultMQPullConsumer(group);
+        // 设置nameserver地址
+        try {
+            consumer.setNamesrvAddr("192.168.100.129:9876");
+            consumer.start();
+            MessageQueue messageQueue = new MessageQueue();
+            messageQueue.setTopic(topic);
+            // 从队列 id= 0 的队列 获取数据
+            // 100条消息, 分为 4 个队列, 每个队列 25 条消息
+            messageQueue.setQueueId(0);
+            // 这里的 broker-a 是从 web ui 界面获取的
+            messageQueue.setBrokerName("broker-a");
+            long startOffset = 0;
+            // 每一个 offset 都是一条数据
+            PullResult pullResult = consumer.pull(messageQueue, tag, startOffset, 25);
+            if (pullResult.getPullStatus().equals(PullStatus.FOUND)) {
+                List<MessageExt> msgFoundList = pullResult.getMsgFoundList();
+                msgFoundList.forEach(messageExt -> {
+                    String msgId = messageExt.getMsgId();
+                    int queueId = messageExt.getQueueId();
+                    long queueOffset = messageExt.getQueueOffset();
+                    String keys = messageExt.getKeys();
+                    String message = new String(messageExt.getBody());
+                    log.info("msgId : {} , queueId : {}, queueOffset: {} , keys : {}, message : {} ",
+                            msgId, queueId, queueOffset, keys, message);
+                });
+
+                // 更新消费位置
+                consumer.updateConsumeOffset(messageQueue, pullResult.getNextBeginOffset());
+            }
+        } catch (MQClientException | RemotingException | MQBrokerException | InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            consumer.shutdown();
+        }
     }
 }
